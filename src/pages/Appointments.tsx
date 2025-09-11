@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { db } from '../firebase';
-import { collection, doc, getDoc, getDocs, orderBy, query, where } from 'firebase/firestore';
+import { collection, getDocs, orderBy, query, where } from 'firebase/firestore';
 
 type Row = {
   id: string;
@@ -55,14 +55,14 @@ export default function Appointments() {
     setImporting(true);
     try {
       let found = null;
-      // Try by patientId first
+      // Try by patientId first (exact match)
       if (importId.trim()) {
         const snap = await getDocs(query(collection(db, 'patients'), where('patientId', '==', importId.trim())));
         if (!snap.empty) {
           found = { id: snap.docs[0].id, ...snap.docs[0].data() };
         }
       }
-      // Try by name if not found
+      // Try by name if not found (exact match)
       if (!found && importName.trim()) {
         const snap = await getDocs(query(collection(db, 'patients'), where('name', '==', importName.trim())));
         if (!snap.empty) {
@@ -84,8 +84,26 @@ export default function Appointments() {
           }
         }
       }
+      // If still not found, try case-insensitive search
+      if (!found) {
+        const allPatients = await getDocs(collection(db, 'patients'));
+        const allProfiles = await getDocs(collection(db, 'patientProfiles'));
+        const allDocs = [...allPatients.docs.map(d => ({ id: d.id, ...d.data() })), ...allProfiles.docs.map(d => ({ id: d.id, ...d.data() }))];
+        
+        if (importId.trim()) {
+          found = allDocs.find(p => 
+            p.patientId && p.patientId.toLowerCase().includes(importId.trim().toLowerCase())
+          );
+        }
+        if (!found && importName.trim()) {
+          found = allDocs.find(p => 
+            p.name && p.name.toLowerCase().includes(importName.trim().toLowerCase())
+          );
+        }
+      }
       setImportedPatient(found);
-    } catch {
+    } catch (error) {
+      console.error('Import error:', error);
       setImportedPatient(null);
     } finally {
       setImporting(false);

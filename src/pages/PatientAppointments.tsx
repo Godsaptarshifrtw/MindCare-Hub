@@ -193,12 +193,6 @@ export default function PatientAppointments() {
     }
   }
 
-  function formatDate(value: any) {
-    try {
-      const ts = value?.toDate ? value.toDate() : (value?.seconds ? new Date(value.seconds * 1000) : null);
-      return ts ? ts.toLocaleString() : '';
-    } catch { return ''; }
-  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-10">

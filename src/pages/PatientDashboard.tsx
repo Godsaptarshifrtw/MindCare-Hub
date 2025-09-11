@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
@@ -7,7 +7,6 @@ import { collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestam
 export default function PatientDashboard() {
   const navigate = useNavigate();
   const { logout, user } = useAuth();
-  const location = useLocation();
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
   const [gender, setGender] = useState('');

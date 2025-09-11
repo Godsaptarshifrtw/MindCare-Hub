@@ -11,8 +11,6 @@ export default function PatientFeedback() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
-  const [historyError, setHistoryError] = useState<string | null>(null);
-  const [historyErrorDetail, setHistoryErrorDetail] = useState<string | null>(null);
 
   // Fallback list of doctors if there's no doctors collection yet
   const fallbackDoctors = useMemo(
@@ -62,13 +60,9 @@ export default function PatientFeedback() {
       (snap) => {
         const items = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
         setHistory(items);
-        setHistoryError(null);
-        setHistoryErrorDetail(null);
       },
       async (err) => {
-        // Keep whatever we already have; try a non-ordered fallback and surface the error
-        setHistoryError('Unable to load past feedback.');
-        setHistoryErrorDetail(err?.message || String(err));
+        // Keep whatever we already have; try a non-ordered fallback
         try {
           const fallbackSnap = await getDocs(query(collection(db, 'patientFeedback'), where('uid', '==', user.uid)));
           const items = fallbackSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));

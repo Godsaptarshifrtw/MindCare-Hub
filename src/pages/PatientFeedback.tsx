@@ -47,7 +47,6 @@ export default function PatientFeedback() {
   useEffect(() => {
     if (!user?.uid) {
       setHistory([]);
-      setHistoryError(null);
       return;
     }
     const qRef = query(
@@ -61,7 +60,7 @@ export default function PatientFeedback() {
         const items = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
         setHistory(items);
       },
-      async (err) => {
+      async () => {
         // Keep whatever we already have; try a non-ordered fallback
         try {
           const fallbackSnap = await getDocs(query(collection(db, 'patientFeedback'), where('uid', '==', user.uid)));

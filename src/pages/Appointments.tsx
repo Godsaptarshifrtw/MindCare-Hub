@@ -88,7 +88,7 @@ export default function Appointments() {
       if (!found) {
         const allPatients = await getDocs(collection(db, 'patients'));
         const allProfiles = await getDocs(collection(db, 'patientProfiles'));
-        const allDocs = [...allPatients.docs.map(d => ({ id: d.id, ...d.data() })), ...allProfiles.docs.map(d => ({ id: d.id, ...d.data() }))];
+        const allDocs = [...allPatients.docs.map(d => ({ id: d.id, ...d.data() } as any)), ...allProfiles.docs.map(d => ({ id: d.id, ...d.data() } as any))];
         
         if (importId.trim()) {
           found = allDocs.find(p => 

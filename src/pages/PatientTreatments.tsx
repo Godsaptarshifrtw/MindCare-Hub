@@ -82,6 +82,9 @@ export default function PatientTreatments() {
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">Your Treatments</h1>
             <p className="text-sm text-slate-600 mt-1">View treatments recorded by clinicians for your visits.</p>
+            {patientId && (
+              <p className="text-xs text-slate-500 mt-0.5">Patient ID: {patientId}</p>
+            )}
           </div>
         </div>
 

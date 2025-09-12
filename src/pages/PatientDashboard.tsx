@@ -169,6 +169,7 @@ export default function PatientDashboard() {
             <button onClick={() => navigate('/patient/profile')} className="w-full text-left block rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100">Patient Profile</button>
             <button onClick={() => navigate('/patient/appointments')} className="w-full text-left block rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100">Appointments</button>
             <button onClick={() => navigate('/patient/feedback')} className="w-full text-left block rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100">Feedback</button>
+            <button onClick={() => navigate('/patient/treatments')} className="w-full text-left block rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100">Treatment</button>
             <button onClick={async () => { await logout(); navigate('/login'); }} className="w-full text-left block rounded-md px-3 py-2 text-sm text-red-700 hover:bg-red-50">Log out</button>
           </nav>
         </aside>

@@ -2,8 +2,9 @@ import { db } from '../firebase';
 import { collection, getCountFromServer, query, where, Timestamp } from 'firebase/firestore';
 
 export async function countPatients(): Promise<number> {
-  const snap = await getCountFromServer(collection(db, 'patients'));
-  return snap.data().count;
+  const patientsSnap = await getCountFromServer(collection(db, 'patients'));
+  const profilesSnap = await getCountFromServer(collection(db, 'patientProfiles'));
+  return (patientsSnap.data().count || 0) + (profilesSnap.data().count || 0);
 }
 
 export async function countAppointmentsOnDate(date: Date): Promise<number> {

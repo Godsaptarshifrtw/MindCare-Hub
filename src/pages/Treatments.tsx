@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
-import { collection, getDocs, orderBy, query, where } from 'firebase/firestore';
+import { addDoc, collection, getDocs, orderBy, query, serverTimestamp, where } from 'firebase/firestore';
 
 type Questionnaire = {
   patientName: string;
@@ -28,16 +28,93 @@ export default function Treatments() {
   const [patientSearchId, setPatientSearchId] = useState('');
   const [patientDetails, setPatientDetails] = useState<any | null>(null);
   const [pastTreatments, setPastTreatments] = useState<any[]>([]);
+  const [viewing, setViewing] = useState<any | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+
+  async function loadAllTreatments() {
+    try {
+      const tQ = query(collection(db, 'treatments'), orderBy('date', 'desc'));
+      const tSnap = await getDocs(tQ);
+      const items = tSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setPastTreatments(items);
+    } catch {
+      try {
+        const tSnap = await getDocs(collection(db, 'treatments'));
+        const items = tSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        items.sort((a: any, b: any) => {
+          const aTime = a?.date?.toDate ? a.date.toDate().getTime() : (a?.date?.seconds ? a.date.seconds * 1000 : 0);
+          const bTime = b?.date?.toDate ? b.date.toDate().getTime() : (b?.date?.seconds ? b.date.seconds * 1000 : 0);
+          return bTime - aTime;
+        });
+        setPastTreatments(items);
+      } catch {
+        // keep as-is
+      }
+    }
+  }
+
+  useEffect(() => {
+    void loadAllTreatments();
+  }, [db]);
 
   function onChange<K extends keyof Questionnaire>(key: K, value: Questionnaire[K]) {
     setData((d) => ({ ...d, [key]: value }));
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function resolvePatientId(): Promise<string | null> {
+    const explicitId = data.patientId?.trim() || patientDetails?.patientId?.trim() || '';
+    if (explicitId) {
+      // Verify explicitId exists in patients or patientProfiles
+      const byIdPatients = await getDocs(query(collection(db, 'patients'), where('patientId', '==', explicitId)));
+      if (!byIdPatients.empty) return explicitId;
+      const byIdProfiles = await getDocs(query(collection(db, 'patientProfiles'), where('patientId', '==', explicitId)));
+      if (!byIdProfiles.empty) return explicitId;
+    }
+    // Try resolve by exact name if provided
+    const name = (data.patientName || '').trim();
+    if (name) {
+      const byNamePatients = await getDocs(query(collection(db, 'patients'), where('name', '==', name)));
+      if (!byNamePatients.empty) {
+        const info = byNamePatients.docs[0].data() as any;
+        return (info.patientId || '').trim() || explicitId || null;
+      }
+      const byNameProfiles = await getDocs(query(collection(db, 'patientProfiles'), where('name', '==', name)));
+      if (!byNameProfiles.empty) {
+        const info = byNameProfiles.docs[0].data() as any;
+        return (info.patientId || '').trim() || explicitId || null;
+      }
+    }
+    return explicitId || null;
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!data.patientName || !data.problem || !data.duration) return;
-    setSubmitted(true);
+    try {
+      const pid = await resolvePatientId();
+      if (!pid) {
+        alert('Please enter a valid Patient ID or import patient details first.');
+        return;
+      }
+      const payload = {
+        patientId: pid,
+        patientName: data.patientName,
+        problem: data.problem,
+        duration: data.duration,
+        pastHistory: data.pastHistory,
+        medications: data.medications,
+        status: 'ongoing',
+        createdByUid: user?.uid || null,
+        createdByName: user?.displayName || user?.email || null,
+        date: serverTimestamp(),
+      } as const;
+      await addDoc(collection(db, 'treatments'), payload);
+      setSubmitted(true);
+      // Refresh past treatments (all)
+      await loadAllTreatments();
+    } catch {
+      alert('Failed to save treatment. Please try again.');
+    }
   }
 
   function downloadReport() {
@@ -56,6 +133,7 @@ export default function Treatments() {
   }
 
   return (
+    <>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -105,19 +183,7 @@ export default function Treatments() {
                           patientName: info.name || d.patientName,
                           patientId: info.patientId || d.patientId,
                         }));
-                        const id = info.patientId || patientSearchId.trim();
-                        if (id) {
-                          const tQ = query(
-                            collection(db, 'treatments'),
-                            where('patientId', '==', id),
-                            orderBy('date', 'desc')
-                          );
-                          const tSnap = await getDocs(tQ);
-                          const items = tSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-                          setPastTreatments(items);
-                        } else {
-                          setPastTreatments([]);
-                        }
+                        await loadAllTreatments();
                       } else {
                         setPatientDetails(null);
                         setPastTreatments([]);
@@ -245,12 +311,21 @@ export default function Treatments() {
               <ul className="divide-y divide-slate-100">
                 {pastTreatments.map((t) => (
                   <li key={t.id} className="py-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-slate-900">{t.title || 'Treatment'}</p>
-                        <p className="text-xs text-slate-600">{t.summary || t.problem || '—'}</p>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-900 truncate">{t.title || 'Treatment'}</p>
+                        <p className="text-xs text-slate-600 truncate">{t.summary || t.problem || '—'}</p>
                       </div>
-                      <div className="text-xs text-slate-500 ml-2 whitespace-nowrap">{t.date?.toDate ? t.date.toDate().toLocaleDateString() : (t.date || '')}</div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-xs text-slate-500 whitespace-nowrap">{t.date?.toDate ? t.date.toDate().toLocaleDateString() : (t.date || '')}</div>
+                        <button
+                          type="button"
+                          onClick={() => setViewing(t)}
+                          className="rounded-md border border-slate-300 text-xs font-medium px-2.5 py-1 hover:bg-slate-50"
+                        >
+                          View
+                        </button>
+                      </div>
                     </div>
                     {t.prescription && (
                       <p className="text-xs text-slate-600 mt-1">Prescription: {t.prescription}</p>
@@ -263,6 +338,59 @@ export default function Treatments() {
         </div>
       </div>
     </div>
+    {viewing && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
+        <div className="w-full max-w-lg bg-white rounded-2xl shadow-lg border border-slate-200">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+            <h3 className="text-base font-semibold text-slate-900">Treatment Details</h3>
+            <button onClick={() => setViewing(null)} className="rounded-md border border-slate-300 text-xs font-medium px-2 py-1 hover:bg-slate-50">Close</button>
+          </div>
+          <div className="p-4 space-y-3 text-sm text-slate-800">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="text-slate-500 text-xs">Patient Name</div>
+                <div>{viewing.patientName || '—'}</div>
+              </div>
+              <div>
+                <div className="text-slate-500 text-xs">Patient ID</div>
+                <div>{viewing.patientId || '—'}</div>
+              </div>
+            </div>
+            <div>
+              <div className="text-slate-500 text-xs">Date</div>
+              <div>{viewing.date?.toDate ? viewing.date.toDate().toLocaleString() : (viewing.date || '—')}</div>
+            </div>
+            <div>
+              <div className="text-slate-500 text-xs">Problem</div>
+              <div>{viewing.problem || '—'}</div>
+            </div>
+            <div>
+              <div className="text-slate-500 text-xs">Duration</div>
+              <div>{viewing.duration || '—'}</div>
+            </div>
+            <div>
+              <div className="text-slate-500 text-xs">Past History</div>
+              <div className="whitespace-pre-wrap break-words">{viewing.pastHistory || '—'}</div>
+            </div>
+            <div>
+              <div className="text-slate-500 text-xs">Ongoing Medication</div>
+              <div className="whitespace-pre-wrap break-words">{viewing.medications || '—'}</div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <div>
+                <div className="text-slate-500 text-xs">Created By</div>
+                <div>{viewing.createdByName || '—'}</div>
+              </div>
+              <div>
+                <div className="text-slate-500 text-xs">Creator UID</div>
+                <div className="truncate">{viewing.createdByUid || '—'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 

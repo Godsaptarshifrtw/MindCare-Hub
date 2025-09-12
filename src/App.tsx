@@ -13,6 +13,7 @@ import PatientRegistration from './pages/PatientRegistration';
 import PatientProfile from './pages/PatientProfile';
 import PatientFeedback from './pages/PatientFeedback';
 import PatientAppointments from './pages/PatientAppointments';
+import PatientTreatments from './pages/PatientTreatments';
 import AdminPatientProfile from './pages/AdminPatientProfile';
 import AdminPatientAppointments from './pages/AdminPatientAppointments';
 
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="/patient/profile" element={<PatientProfile />} />
         <Route path="/patient/feedback" element={<PatientFeedback />} />
         <Route path="/patient/appointments" element={<PatientAppointments />} />
+        <Route path="/patient/treatments" element={<PatientTreatments />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
             <Route path="/" element={<Dashboard />} />

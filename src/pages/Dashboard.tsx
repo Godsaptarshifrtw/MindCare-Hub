@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { countAppointmentsOnDate, countPatients, countTreatmentsByStatus } from '../lib/firestore';
 import { useAuth } from '../context/AuthContext';
 import { useMemo } from 'react';
+import { db } from '../firebase';
+import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -22,11 +24,55 @@ export default function Dashboard() {
     { title: 'Patient Satisfaction', query: { data: '4.8/5', isLoading: false } as any, trend: '+0.2 improvement', trendUp: true },
   ];
 
-  const recentActivities = [
-    { id: 1, text: 'New patient registered: John Doe', time: '2 mins ago' },
-    { id: 2, text: 'Appointment completed: Dr. Smith', time: '5 mins ago' },
-    { id: 3, text: 'Treatment updated: Patient ID #1234', time: '10 mins ago' },
-  ];
+  const recentActivities = useQuery({
+    queryKey: ['recent-activities'],
+    queryFn: async () => {
+      function toMillis(value: any): number {
+        try {
+          if (!value) return 0;
+          // Firestore Timestamp
+          if (value.toDate) return value.toDate().getTime();
+          if (typeof value.seconds === 'number') return value.seconds * 1000;
+          // JS Date or ISO string
+          const d = new Date(value);
+          const t = d.getTime();
+          return Number.isNaN(t) ? 0 : t;
+        } catch { return 0; }
+      }
+
+      const [apptSnap, trtSnap, fbSnap] = await Promise.all([
+        getDocs(query(collection(db, 'appointments'), orderBy('appointmentDetails.date', 'desc'), limit(5))),
+        getDocs(query(collection(db, 'treatments'), orderBy('date', 'desc'), limit(5))),
+        getDocs(query(collection(db, 'patientFeedback'), orderBy('createdAt', 'desc'), limit(5))),
+      ]);
+
+      const apptItems = apptSnap.docs.map((d) => {
+        const a: any = d.data();
+        const when = a?.appointmentDetails?.date;
+        const doctor = a?.doctor || a?.doctorName || 'Doctor';
+        const patient = a?.patientName || a?.patientId || a?.patientUid || 'Patient';
+        return { id: `appt-${d.id}` , text: `Appointment booked with ${doctor} by ${patient}`, ts: toMillis(when) };
+      });
+
+      const trtItems = trtSnap.docs.map((d) => {
+        const t: any = d.data();
+        return { id: `trt-${d.id}`, text: `Treatment ${t.status || 'updated'} for ${t.patientName || t.patientId || 'Patient'}`, ts: toMillis(t?.date) };
+      });
+
+      const fbItems = fbSnap.docs.map((d) => {
+        const f: any = d.data();
+        return { id: `fb-${d.id}`, text: `Feedback ${f.status || 'submitted'} for ${f.doctor || 'Doctor'}`, ts: toMillis(f?.createdAt) };
+      });
+
+      const merged = [...apptItems, ...trtItems, ...fbItems]
+        .sort((a, b) => b.ts - a.ts)
+        .slice(0, 10)
+        .map((i) => ({ id: i.id, text: i.text, time: new Date(i.ts || Date.now()).toLocaleString() }));
+
+      return merged;
+    },
+    refetchInterval: 120000,
+  });
 
   return (
     <div className="space-y-6">
@@ -58,17 +104,23 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-semibold text-slate-900">Recent Activities</h2>
           </div>
-          <ul className="divide-y divide-slate-100">
-            {recentActivities.map((a) => (
-              <li key={a.id} className="py-3 flex items-center gap-3">
-                <span className="inline-flex h-2 w-2 rounded-full bg-blue-600" aria-hidden="true" />
-                <div className="flex-1">
-                  <p className="text-sm text-slate-800">{a.text}</p>
-                  <p className="text-xs text-slate-500">{a.time}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
+          {recentActivities.isLoading ? (
+            <p className="text-sm text-slate-500">Loading…</p>
+          ) : recentActivities.error ? (
+            <p className="text-sm text-slate-500">Unable to load activities.</p>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {(recentActivities.data as any[]).map((a) => (
+                <li key={a.id} className="py-3 flex items-center gap-3">
+                  <span className="inline-flex h-2 w-2 rounded-full bg-blue-600" aria-hidden="true" />
+                  <div className="flex-1">
+                    <p className="text-sm text-slate-800">{a.text}</p>
+                    <p className="text-xs text-slate-500">{a.time}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
           <h2 className="text-base font-semibold text-slate-900 mb-3">Quick Actions</h2>

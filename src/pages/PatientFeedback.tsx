@@ -26,10 +26,10 @@ export default function PatientFeedback() {
   const [doctors, setDoctors] = useState<string[]>(fallbackDoctors);
 
   useEffect(() => {
-    // Try to populate doctors from a `doctors` collection if it exists
+    // Fetch doctors from doctorProfiles collection
     (async () => {
       try {
-        const snap = await getDocs(collection(db, 'doctors'));
+        const snap = await getDocs(collection(db, 'doctorProfiles'));
         if (!snap.empty) {
           const list = snap.docs
             .map((d) => d.data() as any)
@@ -41,7 +41,7 @@ export default function PatientFeedback() {
         // ignore if collection doesn't exist or permission denied; use fallback
       }
     })();
-  }, [db, fallbackDoctors]);
+  }, [fallbackDoctors]);
 
   // Subscribe to past feedback in realtime
   useEffect(() => {

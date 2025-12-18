@@ -27,6 +27,7 @@ import GeneralManagerRegistration from './pages/GeneralManagerRegistration';
 import GeneralManagerFeedback from './pages/GeneralManagerFeedback';
 import GeneralManagerAppointments from './pages/GeneralManagerAppointments';
 import GeneralManagerPatients from './pages/GeneralManagerPatients';
+import GeneralManagerStaff from './pages/GeneralManagerStaff';
 
 // removed unused Placeholder
 
@@ -66,6 +67,7 @@ export default function App() {
             <Route path="/generalmanager/patients/:id/appointments" element={<AdminPatientAppointments />} />
             <Route path="/generalmanager/appointments" element={<GeneralManagerAppointments />} />
             <Route path="/generalmanager/feedback" element={<GeneralManagerFeedback />} />
+            <Route path="/generalmanager/staff" element={<GeneralManagerStaff />} />
           </Route>
         </Route>
       </Routes>

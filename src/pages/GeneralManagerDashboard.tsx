@@ -3,8 +3,11 @@ import { countPatients, countDoctors } from '../lib/firestore';
 import { useAuth } from '../context/AuthContext';
 import { useMemo } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
+import { collection, getDocs, getCountFromServer, limit, orderBy, query } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
+
+// Hardcoded staff count (nurses + support staff + psychiatrists)
+const HARDCODED_STAFF_COUNT = 8;
 
 export default function GeneralManagerDashboard() {
   const { user } = useAuth();
@@ -17,6 +20,47 @@ export default function GeneralManagerDashboard() {
 
   const patients = useQuery({ queryKey: ['patients-count'], queryFn: countPatients, refetchInterval: 300000 });
   const doctors = useQuery({ queryKey: ['doctors-count'], queryFn: countDoctors, refetchInterval: 300000 });
+
+  // Total staff = hardcoded staff + doctors from Firebase
+  const totalStaff = useQuery({
+    queryKey: ['total-staff'],
+    queryFn: async () => {
+      const doctorCount = await countDoctors();
+      return HARDCODED_STAFF_COUNT + doctorCount;
+    },
+    refetchInterval: 300000,
+  });
+
+  // Total bookings (appointments)
+  const totalBookings = useQuery({
+    queryKey: ['total-bookings'],
+    queryFn: async () => {
+      try {
+        const snap = await getCountFromServer(collection(db, 'appointments'));
+        return snap.data().count;
+      } catch {
+        const snap = await getDocs(collection(db, 'appointments'));
+        return snap.docs.length;
+      }
+    },
+    refetchInterval: 300000,
+  });
+
+  // Total revenue (₹500 per appointment)
+  const totalRevenue = useQuery({
+    queryKey: ['total-revenue'],
+    queryFn: async () => {
+      try {
+        const snap = await getCountFromServer(collection(db, 'appointments'));
+        const count = snap.data().count;
+        return count * 500; // ₹500 per appointment
+      } catch {
+        const snap = await getDocs(collection(db, 'appointments'));
+        return snap.docs.length * 500;
+      }
+    },
+    refetchInterval: 300000,
+  });
 
   const recentActivities = useQuery({
     queryKey: ['gm-recent-activities'],
@@ -67,8 +111,11 @@ export default function GeneralManagerDashboard() {
   });
 
   const cards = [
-    { title: 'Total Patients', query: patients, trend: 'Registered', trendUp: true },
-    { title: 'Total Doctors', query: doctors, trend: 'Active', trendUp: true },
+    { title: 'Total Patients', query: patients, trend: 'Registered', trendUp: true, format: (v: any) => v },
+    { title: 'Total Doctors', query: doctors, trend: 'Active', trendUp: true, format: (v: any) => v },
+    { title: 'Total Staff', query: totalStaff, trend: 'Members', trendUp: true, format: (v: any) => v },
+    { title: 'Total Bookings', query: totalBookings, trend: 'Appointments', trendUp: true, format: (v: any) => v },
+    { title: 'Total Revenue', query: totalRevenue, trend: 'Earned', trendUp: true, format: (v: any) => `₹${v?.toLocaleString('en-IN') || 0}` },
   ];
 
   return (
@@ -80,13 +127,13 @@ export default function GeneralManagerDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {cards.map((c) => (
           <div key={c.title} className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
             <p className="text-sm text-slate-500">{c.title}</p>
             <div className="mt-2 flex items-end justify-between">
-              <p className="text-3xl font-semibold text-slate-900">
-                {c.query.isLoading ? '…' : (c as any).query.error ? '—' : (c as any).query.data}
+              <p className="text-2xl font-semibold text-slate-900">
+                {c.query.isLoading ? '…' : (c as any).query.error ? '—' : c.format((c as any).query.data)}
               </p>
               <span className={`text-xs font-medium px-2 py-1 rounded ${c.trendUp ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50'}`}>
                 {c.trendUp ? '↗' : '↘'} {c.trend}

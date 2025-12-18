@@ -34,6 +34,7 @@ export default function GeneralManagerLayout() {
             <NavItem to="/generalmanager/patients" label="Patients" />
             <NavItem to="/generalmanager/appointments" label="Appointments" />
             <NavItem to="/generalmanager/feedback" label="Feedback" />
+            <NavItem to="/generalmanager/staff" label="Staff" />
           </nav>
         </aside>
         <main className="min-h-screen">

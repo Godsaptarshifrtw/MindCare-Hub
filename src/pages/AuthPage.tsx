@@ -166,6 +166,22 @@ export default function AuthPage(): ReactElement {
     }
   }, [navigate]);
 
+  const redirectGeneralManagerAfterLogin = useCallback(async () => {
+    // Decide where to send the general manager: dashboard if profile exists, else registration
+    try {
+      const currentUser = (await import('firebase/auth')).getAuth().currentUser;
+      const uid = currentUser?.uid;
+      if (!uid) {
+        navigate('/generalmanager/register');
+        return;
+      }
+      const snap = await getDoc(doc(db, 'generalManagerProfiles', uid));
+      if (snap.exists()) navigate('/generalmanager'); else navigate('/generalmanager/register');
+    } catch {
+      navigate('/generalmanager/register');
+    }
+  }, [navigate]);
+
   const handleSubmit = useCallback(async () => {
     if (hasErrors) {
       push('error', 'Please fix the form errors and try again.');
@@ -180,8 +196,10 @@ export default function AuthPage(): ReactElement {
           await redirectPatientAfterLogin();
         } else if (role === 'doctor') {
           await redirectDoctorAfterLogin();
+        } else if (role === 'generalmanager') {
+          await redirectGeneralManagerAfterLogin();
         } else {
-          // Admin and General Manager go to admin dashboard
+          // Admin goes to admin dashboard
           navigate('/');
         }
       } else {
@@ -191,8 +209,10 @@ export default function AuthPage(): ReactElement {
           await redirectPatientAfterLogin();
         } else if (role === 'doctor') {
           await redirectDoctorAfterLogin();
+        } else if (role === 'generalmanager') {
+          await redirectGeneralManagerAfterLogin();
         } else {
-          // Admin and General Manager go to admin dashboard
+          // Admin goes to admin dashboard
           navigate('/');
         }
       }
@@ -201,7 +221,7 @@ export default function AuthPage(): ReactElement {
     } finally {
       setIsLoading(false);
     }
-  }, [hasErrors, activeTab, email, password, displayName, role, navigate, login, push, redirectPatientAfterLogin, redirectDoctorAfterLogin]);
+  }, [hasErrors, activeTab, email, password, displayName, role, navigate, login, push, redirectPatientAfterLogin, redirectDoctorAfterLogin, redirectGeneralManagerAfterLogin]);
 
   const onGoogleContinue = useCallback(async () => {
     setIsLoading(true);
@@ -212,8 +232,10 @@ export default function AuthPage(): ReactElement {
         await redirectPatientAfterLogin();
       } else if (role === 'doctor') {
         await redirectDoctorAfterLogin();
+      } else if (role === 'generalmanager') {
+        await redirectGeneralManagerAfterLogin();
       } else {
-        // Admin and General Manager go to admin dashboard
+        // Admin goes to admin dashboard
         navigate('/');
       }
     } catch (err) {
@@ -221,7 +243,7 @@ export default function AuthPage(): ReactElement {
     } finally {
       setIsLoading(false);
     }
-  }, [loginWithGoogle, navigate, role, push, redirectPatientAfterLogin, redirectDoctorAfterLogin]);
+  }, [loginWithGoogle, navigate, role, push, redirectPatientAfterLogin, redirectDoctorAfterLogin, redirectGeneralManagerAfterLogin]);
 
   const title = activeTab === 'signin' ? 'Welcome back' : 'Create your account';
   const subtitle = activeTab === 'signin' ? 'Sign in to continue' : 'Sign up to get started';

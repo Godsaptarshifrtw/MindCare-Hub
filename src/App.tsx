@@ -21,6 +21,12 @@ import DoctorDashboard from './pages/DoctorDashboard';
 import DoctorRegistration from './pages/DoctorRegistration';
 import DoctorAppointments from './pages/DoctorAppointments';
 import DoctorTreatments from './pages/DoctorTreatments';
+import GeneralManagerLayout from './components/GeneralManagerLayout';
+import GeneralManagerDashboard from './pages/GeneralManagerDashboard';
+import GeneralManagerRegistration from './pages/GeneralManagerRegistration';
+import GeneralManagerFeedback from './pages/GeneralManagerFeedback';
+import GeneralManagerAppointments from './pages/GeneralManagerAppointments';
+import GeneralManagerPatients from './pages/GeneralManagerPatients';
 
 // removed unused Placeholder
 
@@ -36,6 +42,7 @@ export default function App() {
         <Route path="/patient/appointments" element={<PatientAppointments />} />
         <Route path="/patient/treatments" element={<PatientTreatments />} />
         <Route path="/doctor/register" element={<DoctorRegistration />} />
+        <Route path="/generalmanager/register" element={<GeneralManagerRegistration />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
             <Route path="/" element={<Dashboard />} />
@@ -51,6 +58,14 @@ export default function App() {
             <Route path="/doctor" element={<DoctorDashboard />} />
             <Route path="/doctor/appointments" element={<DoctorAppointments />} />
             <Route path="/doctor/treatments" element={<DoctorTreatments />} />
+          </Route>
+          <Route element={<GeneralManagerLayout />}>
+            <Route path="/generalmanager" element={<GeneralManagerDashboard />} />
+            <Route path="/generalmanager/patients" element={<GeneralManagerPatients />} />
+            <Route path="/generalmanager/patients/:id/profile" element={<AdminPatientProfile />} />
+            <Route path="/generalmanager/patients/:id/appointments" element={<AdminPatientAppointments />} />
+            <Route path="/generalmanager/appointments" element={<GeneralManagerAppointments />} />
+            <Route path="/generalmanager/feedback" element={<GeneralManagerFeedback />} />
           </Route>
         </Route>
       </Routes>

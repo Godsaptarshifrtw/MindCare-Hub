@@ -27,4 +27,9 @@ export async function countPendingFeedback(): Promise<number> {
   return snap.data().count;
 }
 
+export async function countDoctors(): Promise<number> {
+  const doctorsSnap = await getCountFromServer(collection(db, 'doctorProfiles'));
+  return doctorsSnap.data().count || 0;
+}
+
 

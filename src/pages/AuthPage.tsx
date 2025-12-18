@@ -8,7 +8,7 @@ import { doc, getDoc } from 'firebase/firestore';
 
 
 type AuthTab = 'signin' | 'signup';
-type Role = 'admin' | 'patient';
+type Role = 'admin' | 'patient' | 'doctor' | 'generalmanager';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -111,7 +111,7 @@ export default function AuthPage(): ReactElement {
 
   useEffect(() => {
     const urlRole = location.search.split('?role=')[1];
-    if (urlRole === 'patient' || urlRole === 'admin') {
+    if (urlRole === 'patient' || urlRole === 'admin' || urlRole === 'doctor' || urlRole === 'generalmanager') {
       setRole(urlRole as Role);
     }
   }, [location.search]);
@@ -150,6 +150,22 @@ export default function AuthPage(): ReactElement {
     }
   }, [navigate]);
 
+  const redirectDoctorAfterLogin = useCallback(async () => {
+    // Decide where to send the doctor: dashboard if profile exists, else registration
+    try {
+      const currentUser = (await import('firebase/auth')).getAuth().currentUser;
+      const uid = currentUser?.uid;
+      if (!uid) {
+        navigate('/doctor/register');
+        return;
+      }
+      const snap = await getDoc(doc(db, 'doctorProfiles', uid));
+      if (snap.exists()) navigate('/doctor'); else navigate('/doctor/register');
+    } catch {
+      navigate('/doctor/register');
+    }
+  }, [navigate]);
+
   const handleSubmit = useCallback(async () => {
     if (hasErrors) {
       push('error', 'Please fix the form errors and try again.');
@@ -160,31 +176,52 @@ export default function AuthPage(): ReactElement {
       if (activeTab === 'signin') {
         await login(email.trim(), password);
         push('success', 'Signed in successfully.');
-        if (role === 'admin') navigate('/'); else await redirectPatientAfterLogin();
+        if (role === 'patient') {
+          await redirectPatientAfterLogin();
+        } else if (role === 'doctor') {
+          await redirectDoctorAfterLogin();
+        } else {
+          // Admin and General Manager go to admin dashboard
+          navigate('/');
+        }
       } else {
         await signUpUser(email.trim(), password, displayName.trim() || undefined);
         push('success', 'Account created successfully.');
-        if (role === 'admin') navigate('/'); else await redirectPatientAfterLogin();
+        if (role === 'patient') {
+          await redirectPatientAfterLogin();
+        } else if (role === 'doctor') {
+          await redirectDoctorAfterLogin();
+        } else {
+          // Admin and General Manager go to admin dashboard
+          navigate('/');
+        }
       }
     } catch (err) {
       push('error', 'Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  }, [hasErrors, activeTab, email, password, displayName, role, navigate, login, push, redirectPatientAfterLogin]);
+  }, [hasErrors, activeTab, email, password, displayName, role, navigate, login, push, redirectPatientAfterLogin, redirectDoctorAfterLogin]);
 
   const onGoogleContinue = useCallback(async () => {
     setIsLoading(true);
     try {
       await loginWithGoogle();
       push('success', 'Signed in with Google.');
-      if (role === 'admin') navigate('/'); else await redirectPatientAfterLogin();
+      if (role === 'patient') {
+        await redirectPatientAfterLogin();
+      } else if (role === 'doctor') {
+        await redirectDoctorAfterLogin();
+      } else {
+        // Admin and General Manager go to admin dashboard
+        navigate('/');
+      }
     } catch (err) {
       push('error', 'Google sign-in failed.');
     } finally {
       setIsLoading(false);
     }
-  }, [loginWithGoogle, navigate, role, push, redirectPatientAfterLogin]);
+  }, [loginWithGoogle, navigate, role, push, redirectPatientAfterLogin, redirectDoctorAfterLogin]);
 
   const title = activeTab === 'signin' ? 'Welcome back' : 'Create your account';
   const subtitle = activeTab === 'signin' ? 'Sign in to continue' : 'Sign up to get started';
@@ -199,25 +236,28 @@ export default function AuthPage(): ReactElement {
                 <div className="h-8 w-8 rounded bg-slate-900 text-white inline-flex items-center justify-center font-semibold">M</div>
                 <h1 className="text-lg font-semibold text-slate-900">MindCare Hub</h1>
               </div>
-              <div>
-                <label className="sr-only" htmlFor="role">Role</label>
-                <div className="inline-flex rounded-lg border border-slate-300 p-1" role="group" aria-label="Select role">
-                  <button
-                    type="button"
-                    onClick={() => setRole('admin')}
-                    className={`px-3 py-1.5 text-sm rounded-md ${role === 'admin' ? 'bg-[#0066CC] text-white' : 'text-slate-700 hover:bg-slate-50'}`}
-                    aria-pressed={role === 'admin'}
+              <div className="w-40">
+                <label htmlFor="role-select" className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Login as
+                </label>
+                <div className="relative">
+                  <select
+                    id="role-select"
+                    value={role}
+                    onChange={(e) => setRole(e.target.value as Role)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 pr-9 text-sm font-medium text-slate-900 outline-none transition focus:ring-2 focus:ring-slate-200 hover:border-slate-400 cursor-pointer appearance-none"
+                    aria-label="Select role"
                   >
-                    Admin
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRole('patient')}
-                    className={`px-3 py-1.5 text-sm rounded-md ${role === 'patient' ? 'bg-[#0066CC] text-white' : 'text-slate-700 hover:bg-slate-50'}`}
-                    aria-pressed={role === 'patient'}
-                  >
-                    Patient
-                  </button>
+                    <option value="admin">Admin</option>
+                    <option value="doctor">Doctor</option>
+                    <option value="generalmanager">General Manager</option>
+                    <option value="patient">Patient</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5">
+                    <svg className="h-4 w-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </div>
               </div>
             </div>

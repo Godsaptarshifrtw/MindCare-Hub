@@ -30,33 +30,38 @@ export default function PatientAppointments() {
   const [booked, setBooked] = useState(false);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
 
-  // Load doctors from Firestore
+  // Load doctors from Firestore (doctorProfiles collection)
   useEffect(() => {
     async function loadDoctors() {
       try {
-        const snap = await getDocs(collection(db, 'doctors'));
+        const snap = await getDocs(collection(db, 'doctorProfiles'));
         if (!snap.empty) {
-          const docs = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+          const docs = snap.docs.map((d) => {
+            const data = d.data() as any;
+            return {
+              id: d.id, // Use UID as doctor ID
+              name: data.name || 'Unknown Doctor',
+              specialty: data.specialization || data.degree || '',
+            };
+          });
           setDoctors(docs);
         } else {
-          // Fallback doctors if no collection exists
-          setDoctors([
-            { id: '1', name: 'Dr. Smith', specialty: 'General Medicine' },
-            { id: '2', name: 'Dr. Johnson', specialty: 'Cardiology' },
-            { id: '3', name: 'Dr. Williams', specialty: 'Dermatology' },
-            { id: '4', name: 'Dr. Brown', specialty: 'Pediatrics' },
-            { id: '5', name: 'Dr. Davis', specialty: 'Orthopedics' },
-          ]);
+          // Fallback: try old 'doctors' collection
+          try {
+            const oldSnap = await getDocs(collection(db, 'doctors'));
+            if (!oldSnap.empty) {
+              const docs = oldSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+              setDoctors(docs);
+            } else {
+              setDoctors([]);
+            }
+          } catch {
+            setDoctors([]);
+          }
         }
-      } catch {
-        // Use fallback doctors
-        setDoctors([
-          { id: '1', name: 'Dr. Smith', specialty: 'General Medicine' },
-          { id: '2', name: 'Dr. Johnson', specialty: 'Cardiology' },
-          { id: '3', name: 'Dr. Williams', specialty: 'Dermatology' },
-          { id: '4', name: 'Dr. Brown', specialty: 'Pediatrics' },
-          { id: '5', name: 'Dr. Davis', specialty: 'Orthopedics' },
-        ]);
+      } catch (error) {
+        console.error('Error loading doctors:', error);
+        setDoctors([]);
       }
     }
     void loadDoctors();

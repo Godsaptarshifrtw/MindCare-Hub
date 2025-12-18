@@ -8,6 +8,7 @@ import Treatments from './pages/Treatments';
 import Feedback from './pages/Feedback';
 import Reports from './pages/Reports';
 import Layout from './components/Layout';
+import DoctorLayout from './components/DoctorLayout';
 import PatientDashboard from './pages/PatientDashboard';
 import PatientRegistration from './pages/PatientRegistration';
 import PatientProfile from './pages/PatientProfile';
@@ -16,6 +17,10 @@ import PatientAppointments from './pages/PatientAppointments';
 import PatientTreatments from './pages/PatientTreatments';
 import AdminPatientProfile from './pages/AdminPatientProfile';
 import AdminPatientAppointments from './pages/AdminPatientAppointments';
+import DoctorDashboard from './pages/DoctorDashboard';
+import DoctorRegistration from './pages/DoctorRegistration';
+import DoctorAppointments from './pages/DoctorAppointments';
+import DoctorTreatments from './pages/DoctorTreatments';
 
 // removed unused Placeholder
 
@@ -30,6 +35,7 @@ export default function App() {
         <Route path="/patient/feedback" element={<PatientFeedback />} />
         <Route path="/patient/appointments" element={<PatientAppointments />} />
         <Route path="/patient/treatments" element={<PatientTreatments />} />
+        <Route path="/doctor/register" element={<DoctorRegistration />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
             <Route path="/" element={<Dashboard />} />
@@ -40,6 +46,11 @@ export default function App() {
             <Route path="/reports" element={<Reports />} />
             <Route path="/patients/:id/profile" element={<AdminPatientProfile />} />
             <Route path="/patients/:id/appointments" element={<AdminPatientAppointments />} />
+          </Route>
+          <Route element={<DoctorLayout />}>
+            <Route path="/doctor" element={<DoctorDashboard />} />
+            <Route path="/doctor/appointments" element={<DoctorAppointments />} />
+            <Route path="/doctor/treatments" element={<DoctorTreatments />} />
           </Route>
         </Route>
       </Routes>
